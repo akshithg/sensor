@@ -1,0 +1,1689 @@
+{
+  "project": {
+    "name": "linux / xen",
+    "language": "C",
+    "window": "Jul 2018 - Sep 2022",
+    "commits": 3,
+    "files": 1,
+    "upstream": "torvalds/linux"
+  },
+  "revisions": [
+    {
+      "id": "9bdc7304f536",
+      "date": "2018-07-20",
+      "message": "allow DMA-capable grant buffers",
+      "author": "Oleksandr Andrushchenko",
+      "source": "// SPDX-License-Identifier: GPL-2.0-only\n// Source: Linux drivers/xen/grant-table.c @ fe8f65b018ef\nint gnttab_dma_alloc_pages(struct gnttab_dma_alloc_args *args)\n{\n\tunsigned long pfn, start_pfn;\n\tsize_t size;\n\tint i, ret;\n\n\tsize = args->nr_pages << PAGE_SHIFT;\n\tif (args->coherent)\n\t\targs->vaddr = dma_alloc_coherent(args->dev, size,\n\t\t\t\t\t\t &args->dev_bus_addr,\n\t\t\t\t\t\t GFP_KERNEL | __GFP_NOWARN);\n\telse\n\t\targs->vaddr = dma_alloc_wc(args->dev, size,\n\t\t\t\t\t   &args->dev_bus_addr,\n\t\t\t\t\t   GFP_KERNEL | __GFP_NOWARN);\n\tif (!args->vaddr) {\n\t\tpr_debug(\"Failed to allocate DMA buffer of size %zu\\n\", size);\n\t\treturn -ENOMEM;\n\t}\n\n\tstart_pfn = __phys_to_pfn(args->dev_bus_addr);\n\tfor (pfn = start_pfn, i = 0; pfn < start_pfn + args->nr_pages;\n\t\t\tpfn++, i++) {\n\t\tstruct page *page = pfn_to_page(pfn);\n\n\t\targs->pages[i] = page;\n\t\targs->frames[i] = xen_page_to_gfn(page);\n\t\txenmem_reservation_scrub_page(page);\n\t}\n\n\txenmem_reservation_va_mapping_reset(args->nr_pages, args->pages);\n\n\tret = xenmem_reservation_decrease(args->nr_pages, args->frames);\n\tif (ret != args->nr_pages) {\n\t\tpr_debug(\"Failed to decrease reservation for DMA buffer\\n\");\n\t\tret = -EFAULT;\n\t\tgoto fail;\n\t}\n\n\tret = gnttab_pages_set_private(args->nr_pages, args->pages);\n\tif (ret < 0)\n\t\tgoto fail;\n\n\treturn 0;\n\nfail:\n\tgnttab_dma_free_pages(args);\n\treturn ret;\n}\n\n",
+      "analysis": {
+        "functions": [
+          {
+            "function": "gnttab_dma_alloc_pages",
+            "nodes": [
+              {
+                "id": "guard:args->coherent:1",
+                "kind": "guard",
+                "label": "args->coherent",
+                "line": 40,
+                "snippet": "args->coherent"
+              },
+              {
+                "id": "action:dma_alloc_coherent:1",
+                "kind": "action",
+                "label": "dma_alloc_coherent",
+                "line": 41,
+                "snippet": "dma_alloc_coherent(args->dev, size,\n\t\t\t\t\t\t &args->dev_bus_addr,\n\t\t\t\t\t\t GFP_KERNEL | __GFP_NOWARN)"
+              },
+              {
+                "id": "action:dma_alloc_wc:1",
+                "kind": "action",
+                "label": "dma_alloc_wc",
+                "line": 45,
+                "snippet": "dma_alloc_wc(args->dev, size,\n\t\t\t\t\t   &args->dev_bus_addr,\n\t\t\t\t\t   GFP_KERNEL | __GFP_NOWARN)"
+              },
+              {
+                "id": "guard:!args->vaddr:1",
+                "kind": "guard",
+                "label": "!args->vaddr",
+                "line": 48,
+                "snippet": "!args->vaddr"
+              },
+              {
+                "id": "action:__phys_to_pfn:1",
+                "kind": "action",
+                "label": "__phys_to_pfn",
+                "line": 53,
+                "snippet": "__phys_to_pfn(args->dev_bus_addr)"
+              },
+              {
+                "id": "action:pfn_to_page:1",
+                "kind": "action",
+                "label": "pfn_to_page",
+                "line": 56,
+                "snippet": "pfn_to_page(pfn)"
+              },
+              {
+                "id": "action:xen_page_to_gfn:1",
+                "kind": "action",
+                "label": "xen_page_to_gfn",
+                "line": 59,
+                "snippet": "xen_page_to_gfn(page)"
+              },
+              {
+                "id": "action:xenmem_reservation_scrub_page:1",
+                "kind": "action",
+                "label": "xenmem_reservation_scrub_page",
+                "line": 60,
+                "snippet": "xenmem_reservation_scrub_page(page)"
+              },
+              {
+                "id": "action:xenmem_reservation_va_mapping_reset:1",
+                "kind": "action",
+                "label": "xenmem_reservation_va_mapping_reset",
+                "line": 63,
+                "snippet": "xenmem_reservation_va_mapping_reset(args->nr_pages, args->pages)"
+              },
+              {
+                "id": "action:xenmem_reservation_decrease:1",
+                "kind": "action",
+                "label": "xenmem_reservation_decrease",
+                "line": 65,
+                "snippet": "xenmem_reservation_decrease(args->nr_pages, args->frames)"
+              },
+              {
+                "id": "guard:ret != args->nr_pages:1",
+                "kind": "guard",
+                "label": "ret != args->nr_pages",
+                "line": 66,
+                "snippet": "ret != args->nr_pages"
+              },
+              {
+                "id": "action:gnttab_pages_set_private:1",
+                "kind": "action",
+                "label": "gnttab_pages_set_private",
+                "line": 72,
+                "snippet": "gnttab_pages_set_private(args->nr_pages, args->pages)"
+              },
+              {
+                "id": "guard:ret < 0:1",
+                "kind": "guard",
+                "label": "ret < 0",
+                "line": 73,
+                "snippet": "ret < 0"
+              },
+              {
+                "id": "action:gnttab_dma_free_pages:1",
+                "kind": "action",
+                "label": "gnttab_dma_free_pages",
+                "line": 79,
+                "snippet": "gnttab_dma_free_pages(args)"
+              }
+            ],
+            "edges": [
+              {
+                "from": "guard:args->coherent:1",
+                "to": "action:dma_alloc_coherent:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:dma_alloc_coherent:1",
+                "to": "action:dma_alloc_wc:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:dma_alloc_wc:1",
+                "to": "guard:!args->vaddr:1",
+                "kind": "control"
+              },
+              {
+                "from": "guard:!args->vaddr:1",
+                "to": "action:__phys_to_pfn:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:__phys_to_pfn:1",
+                "to": "action:pfn_to_page:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:pfn_to_page:1",
+                "to": "action:xen_page_to_gfn:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:xen_page_to_gfn:1",
+                "to": "action:xenmem_reservation_scrub_page:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:xenmem_reservation_scrub_page:1",
+                "to": "action:xenmem_reservation_va_mapping_reset:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:xenmem_reservation_va_mapping_reset:1",
+                "to": "action:xenmem_reservation_decrease:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:xenmem_reservation_decrease:1",
+                "to": "guard:ret != args->nr_pages:1",
+                "kind": "control"
+              },
+              {
+                "from": "guard:ret != args->nr_pages:1",
+                "to": "action:gnttab_pages_set_private:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:gnttab_pages_set_private:1",
+                "to": "guard:ret < 0:1",
+                "kind": "control"
+              },
+              {
+                "from": "guard:ret < 0:1",
+                "to": "action:gnttab_dma_free_pages:1",
+                "kind": "control"
+              }
+            ]
+          }
+        ],
+        "graph": {
+          "nodes": [
+            {
+              "id": "guard:args->coherent:1",
+              "kind": "guard",
+              "label": "args->coherent",
+              "line": 40,
+              "snippet": "args->coherent"
+            },
+            {
+              "id": "action:dma_alloc_coherent:1",
+              "kind": "action",
+              "label": "dma_alloc_coherent",
+              "line": 41,
+              "snippet": "dma_alloc_coherent(args->dev, size,\n\t\t\t\t\t\t &args->dev_bus_addr,\n\t\t\t\t\t\t GFP_KERNEL | __GFP_NOWARN)"
+            },
+            {
+              "id": "action:dma_alloc_wc:1",
+              "kind": "action",
+              "label": "dma_alloc_wc",
+              "line": 45,
+              "snippet": "dma_alloc_wc(args->dev, size,\n\t\t\t\t\t   &args->dev_bus_addr,\n\t\t\t\t\t   GFP_KERNEL | __GFP_NOWARN)"
+            },
+            {
+              "id": "guard:!args->vaddr:1",
+              "kind": "guard",
+              "label": "!args->vaddr",
+              "line": 48,
+              "snippet": "!args->vaddr"
+            },
+            {
+              "id": "action:__phys_to_pfn:1",
+              "kind": "action",
+              "label": "__phys_to_pfn",
+              "line": 53,
+              "snippet": "__phys_to_pfn(args->dev_bus_addr)"
+            },
+            {
+              "id": "action:pfn_to_page:1",
+              "kind": "action",
+              "label": "pfn_to_page",
+              "line": 56,
+              "snippet": "pfn_to_page(pfn)"
+            },
+            {
+              "id": "action:xen_page_to_gfn:1",
+              "kind": "action",
+              "label": "xen_page_to_gfn",
+              "line": 59,
+              "snippet": "xen_page_to_gfn(page)"
+            },
+            {
+              "id": "action:xenmem_reservation_scrub_page:1",
+              "kind": "action",
+              "label": "xenmem_reservation_scrub_page",
+              "line": 60,
+              "snippet": "xenmem_reservation_scrub_page(page)"
+            },
+            {
+              "id": "action:xenmem_reservation_va_mapping_reset:1",
+              "kind": "action",
+              "label": "xenmem_reservation_va_mapping_reset",
+              "line": 63,
+              "snippet": "xenmem_reservation_va_mapping_reset(args->nr_pages, args->pages)"
+            },
+            {
+              "id": "action:xenmem_reservation_decrease:1",
+              "kind": "action",
+              "label": "xenmem_reservation_decrease",
+              "line": 65,
+              "snippet": "xenmem_reservation_decrease(args->nr_pages, args->frames)"
+            },
+            {
+              "id": "guard:ret != args->nr_pages:1",
+              "kind": "guard",
+              "label": "ret != args->nr_pages",
+              "line": 66,
+              "snippet": "ret != args->nr_pages"
+            },
+            {
+              "id": "action:gnttab_pages_set_private:1",
+              "kind": "action",
+              "label": "gnttab_pages_set_private",
+              "line": 72,
+              "snippet": "gnttab_pages_set_private(args->nr_pages, args->pages)"
+            },
+            {
+              "id": "guard:ret < 0:1",
+              "kind": "guard",
+              "label": "ret < 0",
+              "line": 73,
+              "snippet": "ret < 0"
+            },
+            {
+              "id": "action:gnttab_dma_free_pages:1",
+              "kind": "action",
+              "label": "gnttab_dma_free_pages",
+              "line": 79,
+              "snippet": "gnttab_dma_free_pages(args)"
+            }
+          ],
+          "edges": [
+            {
+              "from": "guard:args->coherent:1",
+              "to": "action:dma_alloc_coherent:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:dma_alloc_coherent:1",
+              "to": "action:dma_alloc_wc:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:dma_alloc_wc:1",
+              "to": "guard:!args->vaddr:1",
+              "kind": "control"
+            },
+            {
+              "from": "guard:!args->vaddr:1",
+              "to": "action:__phys_to_pfn:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:__phys_to_pfn:1",
+              "to": "action:pfn_to_page:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:pfn_to_page:1",
+              "to": "action:xen_page_to_gfn:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:xen_page_to_gfn:1",
+              "to": "action:xenmem_reservation_scrub_page:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:xenmem_reservation_scrub_page:1",
+              "to": "action:xenmem_reservation_va_mapping_reset:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:xenmem_reservation_va_mapping_reset:1",
+              "to": "action:xenmem_reservation_decrease:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:xenmem_reservation_decrease:1",
+              "to": "guard:ret != args->nr_pages:1",
+              "kind": "control"
+            },
+            {
+              "from": "guard:ret != args->nr_pages:1",
+              "to": "action:gnttab_pages_set_private:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:gnttab_pages_set_private:1",
+              "to": "guard:ret < 0:1",
+              "kind": "control"
+            },
+            {
+              "from": "guard:ret < 0:1",
+              "to": "action:gnttab_dma_free_pages:1",
+              "kind": "control"
+            }
+          ]
+        },
+        "calls": [
+          "dma_alloc_coherent",
+          "dma_alloc_wc",
+          "__phys_to_pfn",
+          "pfn_to_page",
+          "xen_page_to_gfn",
+          "xenmem_reservation_scrub_page",
+          "xenmem_reservation_va_mapping_reset",
+          "xenmem_reservation_decrease",
+          "gnttab_pages_set_private",
+          "gnttab_dma_free_pages"
+        ]
+      },
+      "role": "introduced",
+      "url": "https://github.com/torvalds/linux/commit/9bdc7304f536f3f77f0a69e7c3a8f5afda561a68",
+      "stable_score": {
+        "risk": 0,
+        "missing_patterns": [],
+        "findings": []
+      },
+      "fix_score": {
+        "risk": 82,
+        "missing_patterns": [
+          {
+            "kind": "required-guard",
+            "label": "validate nr_pages before PAGE_SHIFT",
+            "contains": [
+              "nr_pages",
+              "PAGE_SHIFT"
+            ],
+            "support": 1.0,
+            "detail": "The revision shifts nr_pages by PAGE_SHIFT without first bounding the value. The upstream fix adds a range guard to prevent integer overflow."
+          }
+        ],
+        "findings": [
+          {
+            "severity": "high",
+            "title": "Unchecked shift may overflow",
+            "detail": "The revision shifts nr_pages by PAGE_SHIFT without first bounding the value. The upstream fix adds a range guard to prevent integer overflow.",
+            "expected": "validate nr_pages before PAGE_SHIFT",
+            "support": 1.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "b3f7931f5c61",
+      "date": "2019-11-07",
+      "message": "switch gntdev to kvcalloc",
+      "author": "Juergen Gross",
+      "source": "// SPDX-License-Identifier: GPL-2.0-only\n// Source: Linux drivers/xen/grant-table.c @ fe8f65b018ef\nint gnttab_dma_alloc_pages(struct gnttab_dma_alloc_args *args)\n{\n\tunsigned long pfn, start_pfn;\n\tsize_t size;\n\tint i, ret;\n\n\tsize = args->nr_pages << PAGE_SHIFT;\n\tif (args->coherent)\n\t\targs->vaddr = dma_alloc_coherent(args->dev, size,\n\t\t\t\t\t\t &args->dev_bus_addr,\n\t\t\t\t\t\t GFP_KERNEL | __GFP_NOWARN);\n\telse\n\t\targs->vaddr = dma_alloc_wc(args->dev, size,\n\t\t\t\t\t   &args->dev_bus_addr,\n\t\t\t\t\t   GFP_KERNEL | __GFP_NOWARN);\n\tif (!args->vaddr) {\n\t\tpr_debug(\"Failed to allocate DMA buffer of size %zu\\n\", size);\n\t\treturn -ENOMEM;\n\t}\n\n\tstart_pfn = __phys_to_pfn(args->dev_bus_addr);\n\tfor (pfn = start_pfn, i = 0; pfn < start_pfn + args->nr_pages;\n\t\t\tpfn++, i++) {\n\t\tstruct page *page = pfn_to_page(pfn);\n\n\t\targs->pages[i] = page;\n\t\targs->frames[i] = xen_page_to_gfn(page);\n\t\txenmem_reservation_scrub_page(page);\n\t}\n\n\txenmem_reservation_va_mapping_reset(args->nr_pages, args->pages);\n\n\tret = xenmem_reservation_decrease(args->nr_pages, args->frames);\n\tif (ret != args->nr_pages) {\n\t\tpr_debug(\"Failed to decrease reservation for DMA buffer\\n\");\n\t\tret = -EFAULT;\n\t\tgoto fail;\n\t}\n\n\tret = gnttab_pages_set_private(args->nr_pages, args->pages);\n\tif (ret < 0)\n\t\tgoto fail;\n\n\treturn 0;\n\nfail:\n\tgnttab_dma_free_pages(args);\n\treturn ret;\n}\n\n",
+      "analysis": {
+        "functions": [
+          {
+            "function": "gnttab_dma_alloc_pages",
+            "nodes": [
+              {
+                "id": "guard:args->coherent:1",
+                "kind": "guard",
+                "label": "args->coherent",
+                "line": 40,
+                "snippet": "args->coherent"
+              },
+              {
+                "id": "action:dma_alloc_coherent:1",
+                "kind": "action",
+                "label": "dma_alloc_coherent",
+                "line": 41,
+                "snippet": "dma_alloc_coherent(args->dev, size,\n\t\t\t\t\t\t &args->dev_bus_addr,\n\t\t\t\t\t\t GFP_KERNEL | __GFP_NOWARN)"
+              },
+              {
+                "id": "action:dma_alloc_wc:1",
+                "kind": "action",
+                "label": "dma_alloc_wc",
+                "line": 45,
+                "snippet": "dma_alloc_wc(args->dev, size,\n\t\t\t\t\t   &args->dev_bus_addr,\n\t\t\t\t\t   GFP_KERNEL | __GFP_NOWARN)"
+              },
+              {
+                "id": "guard:!args->vaddr:1",
+                "kind": "guard",
+                "label": "!args->vaddr",
+                "line": 48,
+                "snippet": "!args->vaddr"
+              },
+              {
+                "id": "action:__phys_to_pfn:1",
+                "kind": "action",
+                "label": "__phys_to_pfn",
+                "line": 53,
+                "snippet": "__phys_to_pfn(args->dev_bus_addr)"
+              },
+              {
+                "id": "action:pfn_to_page:1",
+                "kind": "action",
+                "label": "pfn_to_page",
+                "line": 56,
+                "snippet": "pfn_to_page(pfn)"
+              },
+              {
+                "id": "action:xen_page_to_gfn:1",
+                "kind": "action",
+                "label": "xen_page_to_gfn",
+                "line": 59,
+                "snippet": "xen_page_to_gfn(page)"
+              },
+              {
+                "id": "action:xenmem_reservation_scrub_page:1",
+                "kind": "action",
+                "label": "xenmem_reservation_scrub_page",
+                "line": 60,
+                "snippet": "xenmem_reservation_scrub_page(page)"
+              },
+              {
+                "id": "action:xenmem_reservation_va_mapping_reset:1",
+                "kind": "action",
+                "label": "xenmem_reservation_va_mapping_reset",
+                "line": 63,
+                "snippet": "xenmem_reservation_va_mapping_reset(args->nr_pages, args->pages)"
+              },
+              {
+                "id": "action:xenmem_reservation_decrease:1",
+                "kind": "action",
+                "label": "xenmem_reservation_decrease",
+                "line": 65,
+                "snippet": "xenmem_reservation_decrease(args->nr_pages, args->frames)"
+              },
+              {
+                "id": "guard:ret != args->nr_pages:1",
+                "kind": "guard",
+                "label": "ret != args->nr_pages",
+                "line": 66,
+                "snippet": "ret != args->nr_pages"
+              },
+              {
+                "id": "action:gnttab_pages_set_private:1",
+                "kind": "action",
+                "label": "gnttab_pages_set_private",
+                "line": 72,
+                "snippet": "gnttab_pages_set_private(args->nr_pages, args->pages)"
+              },
+              {
+                "id": "guard:ret < 0:1",
+                "kind": "guard",
+                "label": "ret < 0",
+                "line": 73,
+                "snippet": "ret < 0"
+              },
+              {
+                "id": "action:gnttab_dma_free_pages:1",
+                "kind": "action",
+                "label": "gnttab_dma_free_pages",
+                "line": 79,
+                "snippet": "gnttab_dma_free_pages(args)"
+              }
+            ],
+            "edges": [
+              {
+                "from": "guard:args->coherent:1",
+                "to": "action:dma_alloc_coherent:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:dma_alloc_coherent:1",
+                "to": "action:dma_alloc_wc:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:dma_alloc_wc:1",
+                "to": "guard:!args->vaddr:1",
+                "kind": "control"
+              },
+              {
+                "from": "guard:!args->vaddr:1",
+                "to": "action:__phys_to_pfn:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:__phys_to_pfn:1",
+                "to": "action:pfn_to_page:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:pfn_to_page:1",
+                "to": "action:xen_page_to_gfn:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:xen_page_to_gfn:1",
+                "to": "action:xenmem_reservation_scrub_page:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:xenmem_reservation_scrub_page:1",
+                "to": "action:xenmem_reservation_va_mapping_reset:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:xenmem_reservation_va_mapping_reset:1",
+                "to": "action:xenmem_reservation_decrease:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:xenmem_reservation_decrease:1",
+                "to": "guard:ret != args->nr_pages:1",
+                "kind": "control"
+              },
+              {
+                "from": "guard:ret != args->nr_pages:1",
+                "to": "action:gnttab_pages_set_private:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:gnttab_pages_set_private:1",
+                "to": "guard:ret < 0:1",
+                "kind": "control"
+              },
+              {
+                "from": "guard:ret < 0:1",
+                "to": "action:gnttab_dma_free_pages:1",
+                "kind": "control"
+              }
+            ]
+          }
+        ],
+        "graph": {
+          "nodes": [
+            {
+              "id": "guard:args->coherent:1",
+              "kind": "guard",
+              "label": "args->coherent",
+              "line": 40,
+              "snippet": "args->coherent"
+            },
+            {
+              "id": "action:dma_alloc_coherent:1",
+              "kind": "action",
+              "label": "dma_alloc_coherent",
+              "line": 41,
+              "snippet": "dma_alloc_coherent(args->dev, size,\n\t\t\t\t\t\t &args->dev_bus_addr,\n\t\t\t\t\t\t GFP_KERNEL | __GFP_NOWARN)"
+            },
+            {
+              "id": "action:dma_alloc_wc:1",
+              "kind": "action",
+              "label": "dma_alloc_wc",
+              "line": 45,
+              "snippet": "dma_alloc_wc(args->dev, size,\n\t\t\t\t\t   &args->dev_bus_addr,\n\t\t\t\t\t   GFP_KERNEL | __GFP_NOWARN)"
+            },
+            {
+              "id": "guard:!args->vaddr:1",
+              "kind": "guard",
+              "label": "!args->vaddr",
+              "line": 48,
+              "snippet": "!args->vaddr"
+            },
+            {
+              "id": "action:__phys_to_pfn:1",
+              "kind": "action",
+              "label": "__phys_to_pfn",
+              "line": 53,
+              "snippet": "__phys_to_pfn(args->dev_bus_addr)"
+            },
+            {
+              "id": "action:pfn_to_page:1",
+              "kind": "action",
+              "label": "pfn_to_page",
+              "line": 56,
+              "snippet": "pfn_to_page(pfn)"
+            },
+            {
+              "id": "action:xen_page_to_gfn:1",
+              "kind": "action",
+              "label": "xen_page_to_gfn",
+              "line": 59,
+              "snippet": "xen_page_to_gfn(page)"
+            },
+            {
+              "id": "action:xenmem_reservation_scrub_page:1",
+              "kind": "action",
+              "label": "xenmem_reservation_scrub_page",
+              "line": 60,
+              "snippet": "xenmem_reservation_scrub_page(page)"
+            },
+            {
+              "id": "action:xenmem_reservation_va_mapping_reset:1",
+              "kind": "action",
+              "label": "xenmem_reservation_va_mapping_reset",
+              "line": 63,
+              "snippet": "xenmem_reservation_va_mapping_reset(args->nr_pages, args->pages)"
+            },
+            {
+              "id": "action:xenmem_reservation_decrease:1",
+              "kind": "action",
+              "label": "xenmem_reservation_decrease",
+              "line": 65,
+              "snippet": "xenmem_reservation_decrease(args->nr_pages, args->frames)"
+            },
+            {
+              "id": "guard:ret != args->nr_pages:1",
+              "kind": "guard",
+              "label": "ret != args->nr_pages",
+              "line": 66,
+              "snippet": "ret != args->nr_pages"
+            },
+            {
+              "id": "action:gnttab_pages_set_private:1",
+              "kind": "action",
+              "label": "gnttab_pages_set_private",
+              "line": 72,
+              "snippet": "gnttab_pages_set_private(args->nr_pages, args->pages)"
+            },
+            {
+              "id": "guard:ret < 0:1",
+              "kind": "guard",
+              "label": "ret < 0",
+              "line": 73,
+              "snippet": "ret < 0"
+            },
+            {
+              "id": "action:gnttab_dma_free_pages:1",
+              "kind": "action",
+              "label": "gnttab_dma_free_pages",
+              "line": 79,
+              "snippet": "gnttab_dma_free_pages(args)"
+            }
+          ],
+          "edges": [
+            {
+              "from": "guard:args->coherent:1",
+              "to": "action:dma_alloc_coherent:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:dma_alloc_coherent:1",
+              "to": "action:dma_alloc_wc:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:dma_alloc_wc:1",
+              "to": "guard:!args->vaddr:1",
+              "kind": "control"
+            },
+            {
+              "from": "guard:!args->vaddr:1",
+              "to": "action:__phys_to_pfn:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:__phys_to_pfn:1",
+              "to": "action:pfn_to_page:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:pfn_to_page:1",
+              "to": "action:xen_page_to_gfn:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:xen_page_to_gfn:1",
+              "to": "action:xenmem_reservation_scrub_page:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:xenmem_reservation_scrub_page:1",
+              "to": "action:xenmem_reservation_va_mapping_reset:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:xenmem_reservation_va_mapping_reset:1",
+              "to": "action:xenmem_reservation_decrease:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:xenmem_reservation_decrease:1",
+              "to": "guard:ret != args->nr_pages:1",
+              "kind": "control"
+            },
+            {
+              "from": "guard:ret != args->nr_pages:1",
+              "to": "action:gnttab_pages_set_private:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:gnttab_pages_set_private:1",
+              "to": "guard:ret < 0:1",
+              "kind": "control"
+            },
+            {
+              "from": "guard:ret < 0:1",
+              "to": "action:gnttab_dma_free_pages:1",
+              "kind": "control"
+            }
+          ]
+        },
+        "calls": [
+          "dma_alloc_coherent",
+          "dma_alloc_wc",
+          "__phys_to_pfn",
+          "pfn_to_page",
+          "xen_page_to_gfn",
+          "xenmem_reservation_scrub_page",
+          "xenmem_reservation_va_mapping_reset",
+          "xenmem_reservation_decrease",
+          "gnttab_pages_set_private",
+          "gnttab_dma_free_pages"
+        ]
+      },
+      "role": "enabler",
+      "url": "https://github.com/torvalds/linux/commit/b3f7931f5c61ba39e81a5c958bf5d65ebb1838af",
+      "stable_score": {
+        "risk": 0,
+        "missing_patterns": [],
+        "findings": []
+      },
+      "fix_score": {
+        "risk": 82,
+        "missing_patterns": [
+          {
+            "kind": "required-guard",
+            "label": "validate nr_pages before PAGE_SHIFT",
+            "contains": [
+              "nr_pages",
+              "PAGE_SHIFT"
+            ],
+            "support": 1.0,
+            "detail": "The revision shifts nr_pages by PAGE_SHIFT without first bounding the value. The upstream fix adds a range guard to prevent integer overflow."
+          }
+        ],
+        "findings": [
+          {
+            "severity": "high",
+            "title": "Unchecked shift may overflow",
+            "detail": "The revision shifts nr_pages by PAGE_SHIFT without first bounding the value. The upstream fix adds a range guard to prevent integer overflow.",
+            "expected": "validate nr_pages before PAGE_SHIFT",
+            "support": 1.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "e9ea0b30ada0",
+      "date": "2022-09-01",
+      "message": "prevent integer overflow",
+      "author": "Dan Carpenter",
+      "source": "// SPDX-License-Identifier: GPL-2.0-only\n// Source: Linux drivers/xen/grant-table.c @ e9ea0b30ada0\nint gnttab_dma_alloc_pages(struct gnttab_dma_alloc_args *args)\n{\n\tunsigned long pfn, start_pfn;\n\tsize_t size;\n\tint i, ret;\n\n\tif (args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT))\n\t\treturn -ENOMEM;\n\n\tsize = args->nr_pages << PAGE_SHIFT;\n\tif (args->coherent)\n\t\targs->vaddr = dma_alloc_coherent(args->dev, size,\n\t\t\t\t\t\t &args->dev_bus_addr,\n\t\t\t\t\t\t GFP_KERNEL | __GFP_NOWARN);\n\telse\n\t\targs->vaddr = dma_alloc_wc(args->dev, size,\n\t\t\t\t\t   &args->dev_bus_addr,\n\t\t\t\t\t   GFP_KERNEL | __GFP_NOWARN);\n\tif (!args->vaddr) {\n\t\tpr_debug(\"Failed to allocate DMA buffer of size %zu\\n\", size);\n\t\treturn -ENOMEM;\n\t}\n\n\tstart_pfn = __phys_to_pfn(args->dev_bus_addr);\n\tfor (pfn = start_pfn, i = 0; pfn < start_pfn + args->nr_pages;\n\t\t\tpfn++, i++) {\n\t\tstruct page *page = pfn_to_page(pfn);\n\n\t\targs->pages[i] = page;\n\t\targs->frames[i] = xen_page_to_gfn(page);\n\t\txenmem_reservation_scrub_page(page);\n\t}\n\n\txenmem_reservation_va_mapping_reset(args->nr_pages, args->pages);\n\n\tret = xenmem_reservation_decrease(args->nr_pages, args->frames);\n\tif (ret != args->nr_pages) {\n\t\tpr_debug(\"Failed to decrease reservation for DMA buffer\\n\");\n\t\tret = -EFAULT;\n\t\tgoto fail;\n\t}\n\n\tret = gnttab_pages_set_private(args->nr_pages, args->pages);\n\tif (ret < 0)\n\t\tgoto fail;\n\n\treturn 0;\n\nfail:\n\tgnttab_dma_free_pages(args);\n\treturn ret;\n}\n\n",
+      "analysis": {
+        "functions": [
+          {
+            "function": "gnttab_dma_alloc_pages",
+            "nodes": [
+              {
+                "id": "guard:args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT):1",
+                "kind": "guard",
+                "label": "args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT)",
+                "line": 39,
+                "snippet": "args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT)"
+              },
+              {
+                "id": "guard:args->coherent:1",
+                "kind": "guard",
+                "label": "args->coherent",
+                "line": 43,
+                "snippet": "args->coherent"
+              },
+              {
+                "id": "action:dma_alloc_coherent:1",
+                "kind": "action",
+                "label": "dma_alloc_coherent",
+                "line": 44,
+                "snippet": "dma_alloc_coherent(args->dev, size,\n\t\t\t\t\t\t &args->dev_bus_addr,\n\t\t\t\t\t\t GFP_KERNEL | __GFP_NOWARN)"
+              },
+              {
+                "id": "action:dma_alloc_wc:1",
+                "kind": "action",
+                "label": "dma_alloc_wc",
+                "line": 48,
+                "snippet": "dma_alloc_wc(args->dev, size,\n\t\t\t\t\t   &args->dev_bus_addr,\n\t\t\t\t\t   GFP_KERNEL | __GFP_NOWARN)"
+              },
+              {
+                "id": "guard:!args->vaddr:1",
+                "kind": "guard",
+                "label": "!args->vaddr",
+                "line": 51,
+                "snippet": "!args->vaddr"
+              },
+              {
+                "id": "action:__phys_to_pfn:1",
+                "kind": "action",
+                "label": "__phys_to_pfn",
+                "line": 56,
+                "snippet": "__phys_to_pfn(args->dev_bus_addr)"
+              },
+              {
+                "id": "action:pfn_to_page:1",
+                "kind": "action",
+                "label": "pfn_to_page",
+                "line": 59,
+                "snippet": "pfn_to_page(pfn)"
+              },
+              {
+                "id": "action:xen_page_to_gfn:1",
+                "kind": "action",
+                "label": "xen_page_to_gfn",
+                "line": 62,
+                "snippet": "xen_page_to_gfn(page)"
+              },
+              {
+                "id": "action:xenmem_reservation_scrub_page:1",
+                "kind": "action",
+                "label": "xenmem_reservation_scrub_page",
+                "line": 63,
+                "snippet": "xenmem_reservation_scrub_page(page)"
+              },
+              {
+                "id": "action:xenmem_reservation_va_mapping_reset:1",
+                "kind": "action",
+                "label": "xenmem_reservation_va_mapping_reset",
+                "line": 66,
+                "snippet": "xenmem_reservation_va_mapping_reset(args->nr_pages, args->pages)"
+              },
+              {
+                "id": "action:xenmem_reservation_decrease:1",
+                "kind": "action",
+                "label": "xenmem_reservation_decrease",
+                "line": 68,
+                "snippet": "xenmem_reservation_decrease(args->nr_pages, args->frames)"
+              },
+              {
+                "id": "guard:ret != args->nr_pages:1",
+                "kind": "guard",
+                "label": "ret != args->nr_pages",
+                "line": 69,
+                "snippet": "ret != args->nr_pages"
+              },
+              {
+                "id": "action:gnttab_pages_set_private:1",
+                "kind": "action",
+                "label": "gnttab_pages_set_private",
+                "line": 75,
+                "snippet": "gnttab_pages_set_private(args->nr_pages, args->pages)"
+              },
+              {
+                "id": "guard:ret < 0:1",
+                "kind": "guard",
+                "label": "ret < 0",
+                "line": 76,
+                "snippet": "ret < 0"
+              },
+              {
+                "id": "action:gnttab_dma_free_pages:1",
+                "kind": "action",
+                "label": "gnttab_dma_free_pages",
+                "line": 82,
+                "snippet": "gnttab_dma_free_pages(args)"
+              }
+            ],
+            "edges": [
+              {
+                "from": "guard:args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT):1",
+                "to": "guard:args->coherent:1",
+                "kind": "control"
+              },
+              {
+                "from": "guard:args->coherent:1",
+                "to": "action:dma_alloc_coherent:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:dma_alloc_coherent:1",
+                "to": "action:dma_alloc_wc:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:dma_alloc_wc:1",
+                "to": "guard:!args->vaddr:1",
+                "kind": "control"
+              },
+              {
+                "from": "guard:!args->vaddr:1",
+                "to": "action:__phys_to_pfn:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:__phys_to_pfn:1",
+                "to": "action:pfn_to_page:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:pfn_to_page:1",
+                "to": "action:xen_page_to_gfn:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:xen_page_to_gfn:1",
+                "to": "action:xenmem_reservation_scrub_page:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:xenmem_reservation_scrub_page:1",
+                "to": "action:xenmem_reservation_va_mapping_reset:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:xenmem_reservation_va_mapping_reset:1",
+                "to": "action:xenmem_reservation_decrease:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:xenmem_reservation_decrease:1",
+                "to": "guard:ret != args->nr_pages:1",
+                "kind": "control"
+              },
+              {
+                "from": "guard:ret != args->nr_pages:1",
+                "to": "action:gnttab_pages_set_private:1",
+                "kind": "control"
+              },
+              {
+                "from": "action:gnttab_pages_set_private:1",
+                "to": "guard:ret < 0:1",
+                "kind": "control"
+              },
+              {
+                "from": "guard:ret < 0:1",
+                "to": "action:gnttab_dma_free_pages:1",
+                "kind": "control"
+              }
+            ]
+          }
+        ],
+        "graph": {
+          "nodes": [
+            {
+              "id": "guard:args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT):1",
+              "kind": "guard",
+              "label": "args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT)",
+              "line": 39,
+              "snippet": "args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT)"
+            },
+            {
+              "id": "guard:args->coherent:1",
+              "kind": "guard",
+              "label": "args->coherent",
+              "line": 43,
+              "snippet": "args->coherent"
+            },
+            {
+              "id": "action:dma_alloc_coherent:1",
+              "kind": "action",
+              "label": "dma_alloc_coherent",
+              "line": 44,
+              "snippet": "dma_alloc_coherent(args->dev, size,\n\t\t\t\t\t\t &args->dev_bus_addr,\n\t\t\t\t\t\t GFP_KERNEL | __GFP_NOWARN)"
+            },
+            {
+              "id": "action:dma_alloc_wc:1",
+              "kind": "action",
+              "label": "dma_alloc_wc",
+              "line": 48,
+              "snippet": "dma_alloc_wc(args->dev, size,\n\t\t\t\t\t   &args->dev_bus_addr,\n\t\t\t\t\t   GFP_KERNEL | __GFP_NOWARN)"
+            },
+            {
+              "id": "guard:!args->vaddr:1",
+              "kind": "guard",
+              "label": "!args->vaddr",
+              "line": 51,
+              "snippet": "!args->vaddr"
+            },
+            {
+              "id": "action:__phys_to_pfn:1",
+              "kind": "action",
+              "label": "__phys_to_pfn",
+              "line": 56,
+              "snippet": "__phys_to_pfn(args->dev_bus_addr)"
+            },
+            {
+              "id": "action:pfn_to_page:1",
+              "kind": "action",
+              "label": "pfn_to_page",
+              "line": 59,
+              "snippet": "pfn_to_page(pfn)"
+            },
+            {
+              "id": "action:xen_page_to_gfn:1",
+              "kind": "action",
+              "label": "xen_page_to_gfn",
+              "line": 62,
+              "snippet": "xen_page_to_gfn(page)"
+            },
+            {
+              "id": "action:xenmem_reservation_scrub_page:1",
+              "kind": "action",
+              "label": "xenmem_reservation_scrub_page",
+              "line": 63,
+              "snippet": "xenmem_reservation_scrub_page(page)"
+            },
+            {
+              "id": "action:xenmem_reservation_va_mapping_reset:1",
+              "kind": "action",
+              "label": "xenmem_reservation_va_mapping_reset",
+              "line": 66,
+              "snippet": "xenmem_reservation_va_mapping_reset(args->nr_pages, args->pages)"
+            },
+            {
+              "id": "action:xenmem_reservation_decrease:1",
+              "kind": "action",
+              "label": "xenmem_reservation_decrease",
+              "line": 68,
+              "snippet": "xenmem_reservation_decrease(args->nr_pages, args->frames)"
+            },
+            {
+              "id": "guard:ret != args->nr_pages:1",
+              "kind": "guard",
+              "label": "ret != args->nr_pages",
+              "line": 69,
+              "snippet": "ret != args->nr_pages"
+            },
+            {
+              "id": "action:gnttab_pages_set_private:1",
+              "kind": "action",
+              "label": "gnttab_pages_set_private",
+              "line": 75,
+              "snippet": "gnttab_pages_set_private(args->nr_pages, args->pages)"
+            },
+            {
+              "id": "guard:ret < 0:1",
+              "kind": "guard",
+              "label": "ret < 0",
+              "line": 76,
+              "snippet": "ret < 0"
+            },
+            {
+              "id": "action:gnttab_dma_free_pages:1",
+              "kind": "action",
+              "label": "gnttab_dma_free_pages",
+              "line": 82,
+              "snippet": "gnttab_dma_free_pages(args)"
+            }
+          ],
+          "edges": [
+            {
+              "from": "guard:args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT):1",
+              "to": "guard:args->coherent:1",
+              "kind": "control"
+            },
+            {
+              "from": "guard:args->coherent:1",
+              "to": "action:dma_alloc_coherent:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:dma_alloc_coherent:1",
+              "to": "action:dma_alloc_wc:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:dma_alloc_wc:1",
+              "to": "guard:!args->vaddr:1",
+              "kind": "control"
+            },
+            {
+              "from": "guard:!args->vaddr:1",
+              "to": "action:__phys_to_pfn:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:__phys_to_pfn:1",
+              "to": "action:pfn_to_page:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:pfn_to_page:1",
+              "to": "action:xen_page_to_gfn:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:xen_page_to_gfn:1",
+              "to": "action:xenmem_reservation_scrub_page:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:xenmem_reservation_scrub_page:1",
+              "to": "action:xenmem_reservation_va_mapping_reset:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:xenmem_reservation_va_mapping_reset:1",
+              "to": "action:xenmem_reservation_decrease:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:xenmem_reservation_decrease:1",
+              "to": "guard:ret != args->nr_pages:1",
+              "kind": "control"
+            },
+            {
+              "from": "guard:ret != args->nr_pages:1",
+              "to": "action:gnttab_pages_set_private:1",
+              "kind": "control"
+            },
+            {
+              "from": "action:gnttab_pages_set_private:1",
+              "to": "guard:ret < 0:1",
+              "kind": "control"
+            },
+            {
+              "from": "guard:ret < 0:1",
+              "to": "action:gnttab_dma_free_pages:1",
+              "kind": "control"
+            }
+          ]
+        },
+        "calls": [
+          "dma_alloc_coherent",
+          "dma_alloc_wc",
+          "__phys_to_pfn",
+          "pfn_to_page",
+          "xen_page_to_gfn",
+          "xenmem_reservation_scrub_page",
+          "xenmem_reservation_va_mapping_reset",
+          "xenmem_reservation_decrease",
+          "gnttab_pages_set_private",
+          "gnttab_dma_free_pages"
+        ]
+      },
+      "role": "fix",
+      "url": "https://github.com/torvalds/linux/commit/e9ea0b30ada008f4e65933f449db6894832cb242",
+      "stable_score": {
+        "risk": 0,
+        "missing_patterns": [],
+        "findings": []
+      },
+      "fix_score": {
+        "risk": 0,
+        "missing_patterns": [],
+        "findings": []
+      }
+    }
+  ],
+  "patterns": {
+    "stable": [
+      {
+        "from": "__phys_to_pfn",
+        "to": "gnttab_dma_free_pages",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "__phys_to_pfn",
+        "to": "gnttab_pages_set_private",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "__phys_to_pfn",
+        "to": "pfn_to_page",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "__phys_to_pfn",
+        "to": "xen_page_to_gfn",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "__phys_to_pfn",
+        "to": "xenmem_reservation_decrease",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "__phys_to_pfn",
+        "to": "xenmem_reservation_scrub_page",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "__phys_to_pfn",
+        "to": "xenmem_reservation_va_mapping_reset",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_coherent",
+        "to": "__phys_to_pfn",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_coherent",
+        "to": "dma_alloc_wc",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_coherent",
+        "to": "gnttab_dma_free_pages",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_coherent",
+        "to": "gnttab_pages_set_private",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_coherent",
+        "to": "pfn_to_page",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_coherent",
+        "to": "xen_page_to_gfn",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_coherent",
+        "to": "xenmem_reservation_decrease",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_coherent",
+        "to": "xenmem_reservation_scrub_page",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_coherent",
+        "to": "xenmem_reservation_va_mapping_reset",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_wc",
+        "to": "__phys_to_pfn",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_wc",
+        "to": "gnttab_dma_free_pages",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_wc",
+        "to": "gnttab_pages_set_private",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_wc",
+        "to": "pfn_to_page",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_wc",
+        "to": "xen_page_to_gfn",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_wc",
+        "to": "xenmem_reservation_decrease",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_wc",
+        "to": "xenmem_reservation_scrub_page",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "dma_alloc_wc",
+        "to": "xenmem_reservation_va_mapping_reset",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "gnttab_pages_set_private",
+        "to": "gnttab_dma_free_pages",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "pfn_to_page",
+        "to": "gnttab_dma_free_pages",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "pfn_to_page",
+        "to": "gnttab_pages_set_private",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "pfn_to_page",
+        "to": "xen_page_to_gfn",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "pfn_to_page",
+        "to": "xenmem_reservation_decrease",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "pfn_to_page",
+        "to": "xenmem_reservation_scrub_page",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "pfn_to_page",
+        "to": "xenmem_reservation_va_mapping_reset",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xen_page_to_gfn",
+        "to": "gnttab_dma_free_pages",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xen_page_to_gfn",
+        "to": "gnttab_pages_set_private",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xen_page_to_gfn",
+        "to": "xenmem_reservation_decrease",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xen_page_to_gfn",
+        "to": "xenmem_reservation_scrub_page",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xen_page_to_gfn",
+        "to": "xenmem_reservation_va_mapping_reset",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xenmem_reservation_decrease",
+        "to": "gnttab_dma_free_pages",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xenmem_reservation_decrease",
+        "to": "gnttab_pages_set_private",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xenmem_reservation_scrub_page",
+        "to": "gnttab_dma_free_pages",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xenmem_reservation_scrub_page",
+        "to": "gnttab_pages_set_private",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xenmem_reservation_scrub_page",
+        "to": "xenmem_reservation_decrease",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xenmem_reservation_scrub_page",
+        "to": "xenmem_reservation_va_mapping_reset",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xenmem_reservation_va_mapping_reset",
+        "to": "gnttab_dma_free_pages",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xenmem_reservation_va_mapping_reset",
+        "to": "gnttab_pages_set_private",
+        "kind": "ordered-call",
+        "support": 1.0
+      },
+      {
+        "from": "xenmem_reservation_va_mapping_reset",
+        "to": "xenmem_reservation_decrease",
+        "kind": "ordered-call",
+        "support": 1.0
+      }
+    ],
+    "fix": [
+      {
+        "kind": "required-guard",
+        "label": "validate nr_pages before PAGE_SHIFT",
+        "contains": [
+          "nr_pages",
+          "PAGE_SHIFT"
+        ],
+        "support": 1.0,
+        "detail": "The revision shifts nr_pages by PAGE_SHIFT without first bounding the value. The upstream fix adds a range guard to prevent integer overflow."
+      }
+    ]
+  },
+  "change_graph": {
+    "nodes": [
+      {
+        "id": "action:__phys_to_pfn:1",
+        "kind": "action",
+        "label": "__phys_to_pfn",
+        "line": 56,
+        "snippet": "__phys_to_pfn(args->dev_bus_addr)",
+        "status": "unchanged"
+      },
+      {
+        "id": "action:dma_alloc_coherent:1",
+        "kind": "action",
+        "label": "dma_alloc_coherent",
+        "line": 44,
+        "snippet": "dma_alloc_coherent(args->dev, size,\n\t\t\t\t\t\t &args->dev_bus_addr,\n\t\t\t\t\t\t GFP_KERNEL | __GFP_NOWARN)",
+        "status": "unchanged"
+      },
+      {
+        "id": "action:dma_alloc_wc:1",
+        "kind": "action",
+        "label": "dma_alloc_wc",
+        "line": 48,
+        "snippet": "dma_alloc_wc(args->dev, size,\n\t\t\t\t\t   &args->dev_bus_addr,\n\t\t\t\t\t   GFP_KERNEL | __GFP_NOWARN)",
+        "status": "unchanged"
+      },
+      {
+        "id": "action:gnttab_dma_free_pages:1",
+        "kind": "action",
+        "label": "gnttab_dma_free_pages",
+        "line": 82,
+        "snippet": "gnttab_dma_free_pages(args)",
+        "status": "unchanged"
+      },
+      {
+        "id": "action:gnttab_pages_set_private:1",
+        "kind": "action",
+        "label": "gnttab_pages_set_private",
+        "line": 75,
+        "snippet": "gnttab_pages_set_private(args->nr_pages, args->pages)",
+        "status": "unchanged"
+      },
+      {
+        "id": "action:pfn_to_page:1",
+        "kind": "action",
+        "label": "pfn_to_page",
+        "line": 59,
+        "snippet": "pfn_to_page(pfn)",
+        "status": "unchanged"
+      },
+      {
+        "id": "action:xen_page_to_gfn:1",
+        "kind": "action",
+        "label": "xen_page_to_gfn",
+        "line": 62,
+        "snippet": "xen_page_to_gfn(page)",
+        "status": "unchanged"
+      },
+      {
+        "id": "action:xenmem_reservation_decrease:1",
+        "kind": "action",
+        "label": "xenmem_reservation_decrease",
+        "line": 68,
+        "snippet": "xenmem_reservation_decrease(args->nr_pages, args->frames)",
+        "status": "unchanged"
+      },
+      {
+        "id": "action:xenmem_reservation_scrub_page:1",
+        "kind": "action",
+        "label": "xenmem_reservation_scrub_page",
+        "line": 63,
+        "snippet": "xenmem_reservation_scrub_page(page)",
+        "status": "unchanged"
+      },
+      {
+        "id": "action:xenmem_reservation_va_mapping_reset:1",
+        "kind": "action",
+        "label": "xenmem_reservation_va_mapping_reset",
+        "line": 66,
+        "snippet": "xenmem_reservation_va_mapping_reset(args->nr_pages, args->pages)",
+        "status": "unchanged"
+      },
+      {
+        "id": "guard:!args->vaddr:1",
+        "kind": "guard",
+        "label": "!args->vaddr",
+        "line": 51,
+        "snippet": "!args->vaddr",
+        "status": "unchanged"
+      },
+      {
+        "id": "guard:args->coherent:1",
+        "kind": "guard",
+        "label": "args->coherent",
+        "line": 43,
+        "snippet": "args->coherent",
+        "status": "unchanged"
+      },
+      {
+        "id": "guard:args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT):1",
+        "kind": "guard",
+        "label": "args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT)",
+        "line": 39,
+        "snippet": "args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT)",
+        "status": "added"
+      },
+      {
+        "id": "guard:ret != args->nr_pages:1",
+        "kind": "guard",
+        "label": "ret != args->nr_pages",
+        "line": 69,
+        "snippet": "ret != args->nr_pages",
+        "status": "unchanged"
+      },
+      {
+        "id": "guard:ret < 0:1",
+        "kind": "guard",
+        "label": "ret < 0",
+        "line": 76,
+        "snippet": "ret < 0",
+        "status": "unchanged"
+      }
+    ],
+    "edges": [
+      {
+        "from": "guard:args->nr_pages < 0 || args->nr_pages > (INT_MAX >> PAGE_SHIFT):1",
+        "to": "guard:args->coherent:1",
+        "kind": "control"
+      },
+      {
+        "from": "guard:args->coherent:1",
+        "to": "action:dma_alloc_coherent:1",
+        "kind": "control"
+      },
+      {
+        "from": "action:dma_alloc_coherent:1",
+        "to": "action:dma_alloc_wc:1",
+        "kind": "control"
+      },
+      {
+        "from": "action:dma_alloc_wc:1",
+        "to": "guard:!args->vaddr:1",
+        "kind": "control"
+      },
+      {
+        "from": "guard:!args->vaddr:1",
+        "to": "action:__phys_to_pfn:1",
+        "kind": "control"
+      },
+      {
+        "from": "action:__phys_to_pfn:1",
+        "to": "action:pfn_to_page:1",
+        "kind": "control"
+      },
+      {
+        "from": "action:pfn_to_page:1",
+        "to": "action:xen_page_to_gfn:1",
+        "kind": "control"
+      },
+      {
+        "from": "action:xen_page_to_gfn:1",
+        "to": "action:xenmem_reservation_scrub_page:1",
+        "kind": "control"
+      },
+      {
+        "from": "action:xenmem_reservation_scrub_page:1",
+        "to": "action:xenmem_reservation_va_mapping_reset:1",
+        "kind": "control"
+      },
+      {
+        "from": "action:xenmem_reservation_va_mapping_reset:1",
+        "to": "action:xenmem_reservation_decrease:1",
+        "kind": "control"
+      },
+      {
+        "from": "action:xenmem_reservation_decrease:1",
+        "to": "guard:ret != args->nr_pages:1",
+        "kind": "control"
+      },
+      {
+        "from": "guard:ret != args->nr_pages:1",
+        "to": "action:gnttab_pages_set_private:1",
+        "kind": "control"
+      },
+      {
+        "from": "action:gnttab_pages_set_private:1",
+        "to": "guard:ret < 0:1",
+        "kind": "control"
+      },
+      {
+        "from": "guard:ret < 0:1",
+        "to": "action:gnttab_dma_free_pages:1",
+        "kind": "control"
+      }
+    ],
+    "summary": {
+      "added": 1,
+      "removed": 0,
+      "unchanged": 14
+    }
+  },
+  "method": {
+    "parser": "Clang JSON AST",
+    "graph": "API actions, guards, data references",
+    "miner": "history + fix-derived regularities"
+  },
+  "profile": "linux-gnttab"
+}
