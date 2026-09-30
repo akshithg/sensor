@@ -1,0 +1,43 @@
+[project]
+name = "sensor-lite"
+version = "0.1.0"
+description = "Clean-room graph-based revision analysis demo"
+readme = "README.md"
+authors = [{ name = "Akshith Gunasekaran" }]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+sensor-lite = "sensor_lite.server:main"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff==0.16.8",
+    "ty==0.0.82",
+]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["A", "B", "C4", "C90", "D", "E", "F", "I", "N", "PL", "RUF", "SIM", "TID", "UP"]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.pylint]
+max-args = 5
+max-statements = 60
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D"]

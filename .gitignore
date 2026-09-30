@@ -1,0 +1,11 @@
+.DS_Store
+.python-version.local
+.ruff_cache/
+.venv/
+__pycache__/
+*.py[cod]
+dist/
+tmp/
+
+# The internship slide deck is marked SRI proprietary and is not published.
+sensor.pdf

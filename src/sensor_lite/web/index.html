@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="SENSOR Lite graph-based code evolution demo" />
+    <title>SENSOR Lite</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="#" aria-label="SENSOR Lite home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span>SENSOR <b>Lite</b></span>
+      </a>
+      <div class="topbar-meta">
+        <span class="status-dot"></span>
+        Local analysis
+        <span class="clean-room">Public kernel fixture</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow">Linux kernel revision analysis</p>
+          <h1>Compare API usage<br />across revisions.</h1>
+        </div>
+        <p class="intro-copy">
+          This demo parses pinned Linux kernel revisions with Clang, builds API-usage and change
+          graphs, and compares the code before and after commit e9ea0b30ada0.
+        </p>
+      </section>
+
+      <section class="workspace" aria-live="polite">
+        <aside class="rail">
+          <div class="rail-section">
+            <p class="rail-label">Project</p>
+            <div class="project-card">
+              <span class="file-icon">C</span>
+              <div><strong id="project-name">Loading...</strong><small>drivers/xen/grant-table.c</small></div>
+            </div>
+          </div>
+
+          <div class="rail-section">
+            <p class="rail-label">Target selection</p>
+            <div class="segmented" role="group" aria-label="Target selection strategy">
+              <button data-strategy="stable">History</button>
+              <button class="active" data-strategy="fix">Bug-fix</button>
+            </div>
+            <p class="strategy-help" id="strategy-help">
+              Require the validation guard added by the upstream fix.
+            </p>
+          </div>
+
+          <div class="rail-section method">
+            <p class="rail-label">Pipeline</p>
+            <ol>
+              <li><span>01</span><div><b>Parse</b><small>Clang JSON AST</small></div></li>
+              <li><span>02</span><div><b>Represent</b><small>Usage + change graphs</small></div></li>
+              <li><span>03</span><div><b>Compare</b><small>Pattern divergence</small></div></li>
+            </ol>
+          </div>
+
+          <div class="scope-note">
+            <span>Demo scope</span>
+            Public GPL-2.0-only kernel history. No original internship code or evaluation data.
+          </div>
+        </aside>
+
+        <div class="canvas">
+          <div class="canvas-header">
+            <div>
+              <p class="breadcrumb">torvalds/linux / drivers / xen / grant-table.c</p>
+              <h2>Revision comparison</h2>
+            </div>
+            <div class="window-chip"><span></span><b id="window-count">3</b> commits / 4 years</div>
+          </div>
+
+          <div class="timeline" id="timeline" aria-label="Revision timeline"></div>
+
+          <div class="summary-row">
+            <article class="risk-card" id="risk-card">
+              <div class="risk-dial" id="risk-dial"><span id="risk-score">--</span><small>risk</small></div>
+              <div><p>Pattern divergence</p><strong id="risk-label">Analyzing...</strong></div>
+            </article>
+            <article class="metric"><span>API calls</span><strong id="call-count">--</strong><small>in selected revision</small></article>
+            <article class="metric"><span>Mined patterns</span><strong id="pattern-count">--</strong><small id="pattern-support">at 100% support</small></article>
+            <article class="metric"><span>Graph elements</span><strong id="graph-count">--</strong><small>nodes + edges</small></article>
+          </div>
+
+          <div class="view-tabs" role="tablist">
+            <button class="active" data-view="usage" role="tab">Usage graph</button>
+            <button data-view="change" role="tab">Change graph</button>
+            <button data-view="source" role="tab">Source + finding</button>
+          </div>
+
+          <div class="analysis-grid">
+            <section class="graph-panel">
+              <div class="panel-head">
+                <div>
+                  <p class="panel-kicker" id="graph-kicker">API usage graph</p>
+                  <h3 id="graph-title">gnttab_dma_alloc_pages()</h3>
+                </div>
+                <div class="legend">
+                  <span><i class="action"></i>Action</span>
+                  <span><i class="guard"></i>Guard</span>
+                  <span><i class="data"></i>Data</span>
+                </div>
+              </div>
+              <div class="graph-stage" id="graph-stage">
+                <svg id="graph-svg" viewBox="0 0 900 390" role="img" aria-label="API usage graph"></svg>
+              </div>
+              <div class="source-panel" id="source-panel" hidden>
+                <div class="source-toolbar">
+                  <span>drivers/xen/grant-table.c</span>
+                  <button id="run-analysis">Run analysis <kbd>⌘↵</kbd></button>
+                </div>
+                <textarea id="source-editor" spellcheck="false" aria-label="C source editor"></textarea>
+                <p class="editor-error" id="editor-error" hidden></p>
+              </div>
+            </section>
+
+            <aside class="finding-panel">
+              <div class="panel-head">
+                <div><p class="panel-kicker">Result</p><h3 id="finding-heading">Finding</h3></div>
+                <span class="severity" id="severity">High</span>
+              </div>
+              <div id="finding-body"></div>
+              <div class="pattern-list">
+                <p class="panel-kicker">Comparison rule</p>
+                <div id="patterns"></div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section class="method-strip">
+        <p>Implementation</p>
+        <div><strong>Clang AST</strong><span>Calls, guards, line numbers, and variable references come from the compiler AST.</span></div>
+        <div><strong>Revision comparison</strong><span>The selected revision is checked against history-derived or fix-derived rules.</span></div>
+        <div><strong>Traceable result</strong><span>Each score identifies the missing rule and the relevant source change.</span></div>
+      </section>
+    </main>
+
+    <footer>
+      <span>SENSOR Lite / reconstructed demo</span>
+      <span>Original research context: DARPA SocialCyber · SRI International internship, 2022</span>
+    </footer>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>
