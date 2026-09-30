@@ -25,6 +25,21 @@ uv run sensor-lite
 
 Open <http://127.0.0.1:8000>. Use a different port with `uv run sensor-lite --port 8080`.
 
+## GitHub Pages
+
+The `docs/` directory contains a static version for GitHub Pages. It supports revision, graph, and
+source views using generated analysis data. Editing and reanalyzing source requires the local
+server.
+
+Regenerate the static files after changing the analyzer, fixture, or web interface:
+
+```bash
+uv run sensor-lite-build-pages
+```
+
+In the repository's Pages settings, choose **Deploy from a branch**, select `main`, and use the
+`/docs` folder.
+
 ## Validate it
 
 ```bash
@@ -33,6 +48,7 @@ uv run ruff check .
 uv run ruff format --check .
 uv run ty check
 node --check src/sensor_lite/web/app.js
+node --check docs/app.js
 ```
 
 ## Scope

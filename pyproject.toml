@@ -9,6 +9,7 @@ dependencies = []
 
 [project.scripts]
 sensor-lite = "sensor_lite.server:main"
+sensor-lite-build-pages = "sensor_lite.pages:main"
 
 [build-system]
 requires = ["uv_build>=0.12.19,<0.13.0"]
